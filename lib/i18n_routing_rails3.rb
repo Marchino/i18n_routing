@@ -33,7 +33,8 @@ module I18nRouting
         # Check for translated resource
         @locales.each do |locale|
           I18n.locale = locale
-          localized_path = I18nRouting.translation_for(resource.name, type)
+          puts "#{locale} - TRADUZIONE RISORSA - #{resource.name}: #{@scope.inspect}"
+          localized_path = I18nRouting.translation_for(resource.name, type, nil, @scope)
 
           # A translated route exists :
           if !localized_path.blank? and String === localized_path
@@ -45,19 +46,19 @@ module I18nRouting
             resource = resource_from_params(type, r, opts.dup)
 
             res = ["#{I18nRouting.locale_escaped(locale)}_#{r}".to_sym, opts]
-
+            
             constraints = opts[:constraints] ? opts[:constraints].dup : {}
             constraints[:i18n_locale] = locale.to_s
-
-            scope(:constraints => constraints, :path_names => I18nRouting.path_names(resource.name, @scope)) do
+            path_names = I18nRouting.path_names(resource.name, @scope)
+            puts "CALL PATH NAMES #{@scope.inspect}"
+            resource.options[:path_names].merge!(path_names) if resource.options[:path_names]
+            scope(:constraints => constraints, :path_names => path_names) do
               localized_branch(locale) do
-                send(type, *res) do
-                  
+                send(type, *res) do  
                   # In the resource(s) block, we need to keep and restore some context :
                   if block
                     old_name = @scope[:i18n_real_resource_name]
                     old = @scope[:scope_level_resource]
-
                     @scope[:i18n_real_resource_name] = resource.name
                     @scope[:i18n_scope_level_resource] = old
                     @scope[:scope_level_resource] = resource
@@ -66,9 +67,7 @@ module I18nRouting
                       # Need to fake name_prefix for singleton resource
                       @scope[:name_prefix] = @scope[:name_prefix].gsub(Regexp.new("#{old.name}$"), resource.name)
                     end
-
                     block.call if block
-
                     @scope[:scope_level_resource] = old
                     @scope[:i18n_real_resource_name] = old_name
                   end
@@ -78,11 +77,11 @@ module I18nRouting
                 end
               end
             end
-
             localizable_route = resource
           end
         end
       end
+
       return localizable_route
     end
 
@@ -183,6 +182,22 @@ module I18nRouting
       @skip_localization = old
     end
     
+    def scope(*args)
+      if(@scope[:path])
+        t = I18nRouting.translation_for(@scope[:path].gsub(/^\//, ''), :resource, nil)
+        if t
+          @scope[:original_path] = @scope[:path]
+          @scope[:path] = "/#{t}"
+        end
+        puts "TRADUZIONE SCOPE: #{t}"
+      end
+      super
+      if @scope[:original_path]
+        @scope[:path] = @scope[:original_path]
+        @scope[:original_path] = nil
+      end
+    end
+          
     def match(*args)
       # Localize simple match only if there is no resource scope.
       if args.size == 1 and @locales and !parent_resource and args.last.is_a?(Hash) and args.first[:as]
@@ -215,10 +230,9 @@ module I18nRouting
       cur_scope = nil
       if @locales
         localized = localized_resources(type, *resources, &block) if !@skip_localization
-
         ## We do not translate if we are in a translation branch :
         return if localized and nested_deep > 0
-
+      
         # Set the current standard resource in order to customize url helper :
         if !@localized_branch
           r = resource_from_params(type, *resources)
