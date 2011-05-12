@@ -33,7 +33,7 @@ module I18nRouting
         # Check for translated resource
         @locales.each do |locale|
           I18n.locale = locale
-          puts "#{locale} - TRADUZIONE RISORSA - #{resource.name}: #{@scope.inspect}"
+          puts "#{locale} - TRADUZIONE RISORSA - #{resource.name}: #{@scope.inspect}" if @i18n_verbose
           localized_path = I18nRouting.translation_for(resource.name, type, nil, @scope)
 
           # A translated route exists :
@@ -50,7 +50,7 @@ module I18nRouting
             constraints = opts[:constraints] ? opts[:constraints].dup : {}
             constraints[:i18n_locale] = locale.to_s
             path_names = I18nRouting.path_names(resource.name, @scope)
-            puts "CALL PATH NAMES #{@scope.inspect}"
+            puts "CALL PATH NAMES #{@scope.inspect}" if @i18n_verbose
             resource.options[:path_names].merge!(path_names) if resource.options[:path_names]
             scope(:constraints => constraints, :path_names => path_names) do
               localized_branch(locale) do
@@ -189,7 +189,7 @@ module I18nRouting
           @scope[:original_path] = @scope[:path]
           @scope[:path] = "/#{t}"
         end
-        puts "TRADUZIONE SCOPE: #{t}"
+        puts "TRADUZIONE SCOPE: #{t}" if @i18n_verbose
       end
       super
       if @scope[:original_path]

@@ -73,7 +73,7 @@ module I18nRouting
       h[pn] = n if n and n != name.to_s
 
     end
-      puts "PATH NAMES: #{h.inspect} - #{options[:original_path]}"
+      # puts "PATH NAMES: #{h.inspect} - #{options[:original_path]}" if 
     return h
   end
 end
